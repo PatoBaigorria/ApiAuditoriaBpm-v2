@@ -1,0 +1,19 @@
+{
+  "Logging": {
+    "LogLevel": {
+      "Default": "Information",
+      "Microsoft.AspNetCore": "Warning"
+    }
+  },
+  "AllowedHosts": "*",
+  "Salt": "SALADA",
+  "TokenAuthentication": {
+    "SecretKey": "Super_Secreta_es_la_clave_de_esta_APP_shhh",
+    "Issuer": "apiAuditoriaBPM",
+    "Audience": "mobileAPP",
+    "TokenPath": "/token",
+    "CookieName": "access_token"
+  },
+  "SMTPUser": "dc9cbf2d262f21",
+  "SMTPPass": "0707c5fa262a72"
+}

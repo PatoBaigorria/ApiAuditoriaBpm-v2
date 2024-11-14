@@ -1,0 +1,70 @@
+# Logs
+*.log
+*.tlog
+*.vlog
+
+# Compiled source
+*.dll
+*.exe
+*.so
+*.dylib
+*.pdb
+*.mdb
+
+# Installer files
+*.msi
+*.app
+*.pkg
+
+# Build directories
+bin/
+obj/
+out/
+
+# User-specific files
+*.user
+*.userosscache
+*.suo
+*.bak
+*.swp
+
+# Rider/JetBrains IDEs
+.idea/
+*.sln.iml
+
+# Visual Studio Code
+.vscode/
+*.code-workspace
+
+# Visual Studio specific
+.vs/
+*.psess
+*.sln.docstates
+
+# ASP.NET Core
+wwwroot/
+appsettings.*.json
+appsettings.json
+
+# Entity Framework
+*Migrations/
+
+# Configuration
+launchSettings.json
+
+# DotNet specific
+project.lock.json
+project.fragment.lock.json
+artifacts/
+
+# npm
+node_modules/
+
+# Byebug
+*.seed
+
+# OS-specific files
+.DS_Store
+Thumbs.db
+/bin
+/obj
