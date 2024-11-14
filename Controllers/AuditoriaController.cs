@@ -204,7 +204,7 @@ namespace apiAuditoriaBPM.Controllers
                 // Enviar el correo
                 var response = await client.SendEmailAsync(msg);
 
-                if (response.StatusCode == System.Net.HttpStatusCode.OK)
+                if (response.StatusCode == System.Net.HttpStatusCode.Accepted)
                 {
                     return Ok("Se ha enviado la notificación de la auditoría correctamente.");
                 }
@@ -295,7 +295,7 @@ namespace apiAuditoriaBPM.Controllers
                 }
 
                 await contexto.SaveChangesAsync();
-                EnviarNotificacionAuditoria(nuevaAuditoria.IdAuditoria);
+                await EnviarNotificacionAuditoria(nuevaAuditoria.IdAuditoria);
                 return CreatedAtAction(nameof(DarDeAltaAuditoriaCompleta), new { id = nuevaAuditoria.IdAuditoria }, new { message = "Auditoría completa creada correctamente", auditoria = nuevaAuditoria });
             }
             catch (Exception ex)
