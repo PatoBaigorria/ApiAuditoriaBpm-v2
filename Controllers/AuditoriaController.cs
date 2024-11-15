@@ -172,7 +172,6 @@ namespace apiAuditoriaBPM.Controllers
                         <tr>
                             <th>Ítem</th>
                             <th style='text-align: center;'>Estado</th>
-                            <th>Comentario</th>
                         </tr>";
 
                 foreach (var item in auditoriaItems)
@@ -181,7 +180,6 @@ namespace apiAuditoriaBPM.Controllers
                         <tr>
                             <td>{item.ItemBPM.Descripcion}</td>
                             <td style='text-align: center;'>{item.Estado}</td>
-                            <td>{item.Comentario}</td>
                         </tr>";
                 }
                 cuerpoCorreo += "</table>";
@@ -254,7 +252,6 @@ namespace apiAuditoriaBPM.Controllers
         {
             public int IdItemBPM { get; set; }
             public string Estado { get; set; }  // Enum o string (por ejemplo, "OK", "NO_OK", "N/A")
-            public string? Comentario { get; set; }
         }
 
 
@@ -289,7 +286,6 @@ namespace apiAuditoriaBPM.Controllers
                         IdAuditoria = nuevaAuditoria.IdAuditoria,
                         IdItemBPM = item.IdItemBPM,
                         Estado = Enum.Parse<EstadoEnum>(item.Estado),
-                        Comentario = item.Comentario
                     };
                     await contexto.AuditoriaItemBPM.AddAsync(nuevoAuditoriaItem);
                 }

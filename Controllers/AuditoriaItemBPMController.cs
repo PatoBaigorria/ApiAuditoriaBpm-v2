@@ -26,7 +26,6 @@ namespace apiAuditoriaBPM.Controllers
                                           IdAuditoria = item.IdAuditoria,
                                           IdItemBPM = item.IdItemBPM,
                                           Estado = item.Estado,
-                                          Comentario = item.Auditoria.Comentario != null ? item.Auditoria.Comentario : ""
                                       })
                                       .ToListAsync();
 
@@ -69,11 +68,9 @@ namespace apiAuditoriaBPM.Controllers
 
                                         // Incluir todos los comentarios de Auditoria y AuditoriaItemBPM
                                         ComentariosAuditoria = g.Select(a => a.Auditoria.Comentario ?? "").Distinct().ToList(),
-                                        ComentariosItem = g.Select(a => a.Comentario ?? "").Distinct().ToList()
                                     })
                                     .ToList(); // Convertir a lista
 
-            // Retornar los items encontrados, sus cantidades y todos los comentarios
             return Ok(groupedItems);
         }
 

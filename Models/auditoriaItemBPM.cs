@@ -19,8 +19,6 @@ namespace apiAuditoriaBPM.Models
         [Required]
         public EstadoEnum Estado { get; set; }
 
-        public string? Comentario { get; set; }
-
         [ForeignKey(nameof(IdAuditoria))]
         [JsonIgnore] 
         public Auditoria? Auditoria { get; set; }
