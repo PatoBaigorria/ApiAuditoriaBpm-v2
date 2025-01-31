@@ -221,15 +221,25 @@ namespace apiAuditoriaBPM.Controllers
 
 
 
-        // GET: Operario Sin Auditoría
         [HttpGet("auditorias-operario")]
         public IActionResult GetOperariosSinAuditoria()
         {
-            // Asumiendo que tienes un contexto de base de datos llamado 'dbContext'
-
-            var operariosSinAuditoria = contexto.Operario
+            // Cargar los operarios con las relaciones incluidas
+            var operarios = contexto.Operario
+                .Include(o => o.Linea)
+                .Include(o => o.Actividad)
                 .Where(o => !contexto.Auditoria.Any(a => a.IdOperario == o.IdOperario))
                 .ToList();
+
+            var operariosSinAuditoria = operarios.Select(o => new
+            {
+                o.IdOperario,
+                NombreCompleto = $"{o.Nombre} {o.Apellido}",
+                o.Legajo,
+                IdLinea = o.Linea != null ? o.Linea.IdLinea : 0,
+                DescripcionLinea = o.Linea != null ? o.Linea.Descripcion : "Sin Línea",
+                DescripcionActividad = o.Actividad != null ? o.Actividad.Descripcion : null
+            }).ToList();
 
             if (!operariosSinAuditoria.Any())
             {
@@ -238,6 +248,7 @@ namespace apiAuditoriaBPM.Controllers
 
             return Ok(operariosSinAuditoria);
         }
+
         public class AltaAuditoriaRequest
         {
             public int IdOperario { get; set; }
