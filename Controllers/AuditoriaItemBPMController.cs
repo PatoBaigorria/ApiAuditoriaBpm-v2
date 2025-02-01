@@ -33,8 +33,8 @@ namespace apiAuditoriaBPM.Controllers
         }
 
         // GET Items No Ok con comentarios de Auditoria e Items
-        [HttpGet("estado-nook")]
-        public async Task<ActionResult<List<object>>> GetAuditoriaItemsWithNoOkEstado([FromForm] int legajo)
+        [HttpGet("estado-nook-por-operario")]
+        public async Task<ActionResult<List<object>>> GetAuditoriaItemsWithNoOkEstado([FromQuery] int legajo)
         {
             var operario = await contexto.Operario
                 .FirstOrDefaultAsync(o => o.Legajo == legajo);
@@ -69,6 +69,7 @@ namespace apiAuditoriaBPM.Controllers
                                         // Incluir todos los comentarios de Auditoria y AuditoriaItemBPM
                                         ComentariosAuditoria = g.Select(a => a.Auditoria.Comentario ?? "").Distinct().ToList(),
                                     })
+                                    .OrderByDescending(g => g.Count)
                                     .ToList(); // Convertir a lista
 
             return Ok(groupedItems);
