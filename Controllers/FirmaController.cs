@@ -17,40 +17,48 @@ namespace apiAuditoriaBPM.Controllers
 
         // POST: api/Firmas/alta
         [HttpPost("alta")]
-        public async Task<IActionResult> DarDeAlta([FromBody] Firma firma)
+        public async Task<ActionResult<Firma>> DarDeAlta([FromBody] Firma firma)
         {
-            if (!ModelState.IsValid)
-            {
-                return BadRequest(ModelState);
-            }
-
             try
             {
-                // Verificar que la auditoría existe
-                var auditoria = await contexto.Auditoria.FindAsync(firma.IdAuditoria);
+                Console.WriteLine("=== Guardando firma ===");
+                Console.WriteLine($"ID Auditoria: {firma.IdAuditoria}");
+                Console.WriteLine($"No Conforme: {firma.NoConforme}");
+
+                if (!ModelState.IsValid)
+                {
+                    return BadRequest(ModelState);
+                }
+
+                // Buscar y actualizar la auditoría
+                var auditoria = await contexto.Auditoria
+                    .FirstOrDefaultAsync(a => a.IdAuditoria == firma.IdAuditoria);
+
                 if (auditoria == null)
                 {
-                     Console.WriteLine($"Auditoría con Id {firma.IdAuditoria} no encontrada.");
                     return NotFound($"Auditoría con Id {firma.IdAuditoria} no encontrada.");
                 }
 
-                firma.FechaCreacion = DateOnly.FromDateTime(DateTime.Now);
+                // Actualizar la auditoría con los datos de la firma
+                auditoria.Firma = firma.DatosFirma;  // Guardar los datos SVG de la firma
+                auditoria.NoConforme = firma.NoConforme;
 
+                // Guardar la firma en su tabla
                 await contexto.Firma.AddAsync(firma);
+
+                // Guardar todos los cambios
                 await contexto.SaveChangesAsync();
 
-                return Ok(new
-                {
-                    message = "Firma creada correctamente",
-                    firma
-                });
+                Console.WriteLine("✅ Firma y auditoría actualizadas correctamente");
+                return Ok(new { message = "Firma creada y auditoría actualizada correctamente", firma });
             }
             catch (Exception ex)
             {
-                var errorDetails = ex.InnerException != null ? ex.InnerException.Message : ex.Message;
-                return StatusCode(500, $"Error interno del servidor: {errorDetails}");
+                Console.WriteLine($"❌ Error: {ex.Message}");
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
     }
 }
+
 

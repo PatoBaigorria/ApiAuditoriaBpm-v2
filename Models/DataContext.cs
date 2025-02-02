@@ -14,6 +14,7 @@ namespace apiAuditoriaBPM.Models
 		public DbSet<Linea> Linea { get; set; }
 		public DbSet<Operario> Operario { get; set; }
 		public DbSet<Supervisor> Supervisor { get; set; }
+		public DbSet<FirmaPatron> FirmaPatron { get; set; }
 
 	}
 }

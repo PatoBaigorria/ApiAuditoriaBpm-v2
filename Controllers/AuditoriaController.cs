@@ -5,11 +5,6 @@ using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Authorization;
-using MimeKit;
-using MailKit.Net.Smtp;
-using MailKit.Security;
-using System.Text;
-using Microsoft.Extensions.Configuration;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 using System.Threading.Tasks;
@@ -255,6 +250,9 @@ namespace apiAuditoriaBPM.Controllers
             public int IdSupervisor { get; set; }
             public int IdActividad { get; set; }
             public int IdLinea { get; set; }
+
+            public bool NoConforme { get; set; }
+            public string Firma { get; set; }
             public string? Comentario { get; set; }
             public List<ItemAuditoriaRequest> Items { get; set; } = new();
         }
@@ -284,6 +282,8 @@ namespace apiAuditoriaBPM.Controllers
                     IdActividad = request.IdActividad,
                     IdLinea = request.IdLinea,
                     Fecha = DateOnly.FromDateTime(DateTime.Now),
+                    NoConforme = request.NoConforme,
+                    Firma = request.Firma,
                     Comentario = request.Comentario
                 };
 

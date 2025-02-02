@@ -11,14 +11,15 @@ namespace apiAuditoriaBPM.Models
         [Required]
         public int IdAuditoria { get; set; }
 
+        public bool NoConforme { get; set; }
+
         [Required]
-        [MaxLength(200)]
         public string DatosFirma { get; set; }
 
         [ForeignKey(nameof(IdAuditoria))]
         public Auditoria? Auditoria { get; set; }
 
-        public DateOnly FechaCreacion { get; set; }
+        public string FechaCreacion { get; set; }
 
     }
 }

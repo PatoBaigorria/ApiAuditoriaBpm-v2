@@ -34,6 +34,10 @@ namespace apiAuditoriaBPM.Models
 
         public DateOnly Fecha { get; set; }
 
+        public string Firma { get; set; }
+
+        public bool NoConforme { get; set; }
+
         public string? Comentario { get; set; }
         
     }
