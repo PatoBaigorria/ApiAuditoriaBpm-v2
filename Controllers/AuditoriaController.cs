@@ -160,6 +160,7 @@ namespace apiAuditoriaBPM.Controllers
                         <li><strong>Actividad Realizada:</strong> {auditoria.Actividad?.Descripcion}</li>
                         <li><strong>Total de Ítems Auditados:</strong> {auditoriaItems.Count}</li>
                         <li><strong>Comentario:</strong> {auditoria.Comentario}</li>
+                        <li><strong>Firma:</strong> {auditoria.NoConforme}</li>
                     </ul>
                     <br>
                     <h3>Resumen de Ítems Auditados:</h3>
@@ -312,6 +313,59 @@ namespace apiAuditoriaBPM.Controllers
             }
 
 
+        }
+
+        // GET: Auditorias por rango de fechas
+        [HttpGet("por-fecha")]
+        [Authorize(AuthenticationSchemes = JwtBearerDefaults.AuthenticationScheme)]
+        public async Task<ActionResult<List<Auditoria>>> GetAuditoriasPorFecha(
+            [FromQuery] string fromDate,
+            [FromQuery] string toDate,
+            [FromQuery] int supervisorId)
+        {
+            try
+            {
+                // Convertir las fechas string a DateOnly usando el formato dd-MM-yyyy
+                if (!DateOnly.TryParseExact(fromDate, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out DateOnly fechaInicio) ||
+                    !DateOnly.TryParseExact(toDate, "dd/MM/yyyy", null, System.Globalization.DateTimeStyles.None, out DateOnly fechaFin))
+                {
+                    return BadRequest("Formato de fecha inválido. Use el formato dd/MM/yyyy");
+                }
+
+                // Verificar que el supervisor existe
+                var supervisor = await contexto.Supervisor
+                    .FirstOrDefaultAsync(s => s.IdSupervisor == supervisorId);
+
+                if (supervisor == null)
+                {
+                    return NotFound($"No se encontró el supervisor con ID {supervisorId}");
+                }
+
+                // Obtener las auditorías con todas las relaciones necesarias
+                var auditorias = await contexto.Auditoria
+                    .Include(a => a.Operario)
+                    .Include(a => a.Supervisor)
+                    .Include(a => a.Actividad)
+                    .Include(a => a.Linea)
+                    .Include(a => a.AuditoriaItems)
+                        .ThenInclude(ai => ai.ItemBPM)
+                    .Where(a => a.IdSupervisor == supervisorId &&
+                               a.Fecha >= fechaInicio &&
+                               a.Fecha <= fechaFin)
+                    .OrderByDescending(a => a.Fecha)
+                    .ToListAsync();
+
+                if (!auditorias.Any())
+                {
+                    return Ok(new List<Auditoria>()); // Retorna lista vacía si no hay resultados
+                }
+
+                return Ok(auditorias);
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
         }
     }
 }

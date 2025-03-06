@@ -40,5 +40,7 @@ namespace apiAuditoriaBPM.Models
 
         public string? Comentario { get; set; }
         
+        // Agregar la propiedad de navegación para los items
+        public virtual ICollection<AuditoriaItemBPM> AuditoriaItems { get; set; } = new List<AuditoriaItemBPM>();
     }
 }

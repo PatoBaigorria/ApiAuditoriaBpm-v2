@@ -41,7 +41,7 @@ namespace apiAuditoriaBPM.Controllers
                     return Unauthorized("No se pudo encontrar el Legajo en el token.");
                 }*/
                 var legajo = int.Parse(User.FindFirstValue("Legajo"));
-                
+
 
                 // Busca al usuario en la base de datos
                 var supervisor = await contexto.Supervisor.SingleOrDefaultAsync(x => x.Legajo == legajo);
@@ -98,6 +98,20 @@ namespace apiAuditoriaBPM.Controllers
                     );
                     return Ok(new JwtSecurityTokenHandler().WriteToken(token));
                 }
+            }
+            catch (Exception ex)
+            {
+                return BadRequest(ex.Message);
+            }
+        }
+
+        [HttpGet("todos")]
+        public async Task<ActionResult<IEnumerable<Supervisor>>> GetTodos()
+        {
+            try
+            {
+                var supervisores = await contexto.Supervisor.ToListAsync();
+                return Ok(supervisores);
             }
             catch (Exception ex)
             {
