@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.WebHost.UseUrls("http://localhost:5000", "https://localhost:5001", "http://*:5000", "http://*:5001");
+builder.WebHost.UseUrls("http://localhost:5222", "https://localhost:7029", "http://*:5000", "http://*:5001");
 
 builder.Services.AddAuthentication()
     .AddJwtBearer(options =>

@@ -35,6 +35,28 @@ namespace apiAuditoriaBPM.Controllers
                     return NotFound($"Operario con Id {firmaPatron.IdOperario} no encontrado.");
                 }
 
+                // Verificar longitud de la firma y registrar diagnóstico
+                if (firmaPatron.Firma != null)
+                {
+                    Console.WriteLine($"INFO: Firma del operario {firmaPatron.IdOperario} - Longitud: {firmaPatron.Firma.Length} caracteres");
+
+                    if (firmaPatron.Firma.Length > 255)
+                    {
+                        Console.WriteLine($"⚠️ ADVERTENCIA: La firma del operario {firmaPatron.IdOperario} tiene {firmaPatron.Firma.Length} caracteres, lo que podría causar truncamiento si la columna no es de tipo TEXT.");
+                    }
+
+                    // Verificar si la firma tiene estructura SVG completa
+                    bool esSvgCompleto = firmaPatron.Firma.Contains("</svg>");
+                    if (!esSvgCompleto)
+                    {
+                        Console.WriteLine($"⚠️ ADVERTENCIA: La firma del operario {firmaPatron.IdOperario} parece estar incompleta (no contiene la etiqueta de cierre </svg>)");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine($"⚠️ ADVERTENCIA: La firma del operario {firmaPatron.IdOperario} es nula");
+                }
+
                 // Desactivar firmas patrón anteriores del operario
                 var firmasAnteriores = await contexto.FirmaPatron
                     .Where(f => f.IdOperario == firmaPatron.IdOperario)
@@ -63,6 +85,7 @@ namespace apiAuditoriaBPM.Controllers
             }
             catch (Exception ex)
             {
+                Console.WriteLine($"❌ ERROR: Error al guardar firma patrón: {ex.Message}");
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }

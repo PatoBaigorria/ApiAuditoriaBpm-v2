@@ -8,6 +8,11 @@ using Microsoft.AspNetCore.Authorization;
 using SendGrid;
 using SendGrid.Helpers.Mail;
 using System.Threading.Tasks;
+using Microsoft.Extensions.Logging;
+using System.Text;
+using System;
+using System.IO;
+using System.Linq;
 
 namespace apiAuditoriaBPM.Controllers
 {
@@ -127,6 +132,56 @@ namespace apiAuditoriaBPM.Controllers
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
             }
         }
+        [HttpGet("por-supervisor")]
+        public async Task<ActionResult<IEnumerable<Auditoria>>> GetAuditoriasPorSupervisor(
+            DateTime desde,
+            DateTime hasta,
+            int? supervisorId = null)
+        {
+            // Usar Auditoria (singular) en lugar de Auditorias (plural)
+            var query = contexto.Auditoria
+                .Include(a => a.Supervisor)
+                .Include(a => a.Operario)
+                .Include(a => a.Actividad)
+                .Include(a => a.Linea)
+                .Where(a => a.Fecha >= DateOnly.FromDateTime(desde) &&
+                           a.Fecha <= DateOnly.FromDateTime(hasta));
+
+            if (supervisorId.HasValue)
+            {
+                query = query.Where(a => a.IdSupervisor == supervisorId.Value);
+            }
+
+            var auditorias = await query.ToListAsync();
+
+            return Ok(auditorias);
+        }
+
+
+        [HttpGet]
+        public async Task<ActionResult<IEnumerable<Auditoria>>> GetAuditorias(DateTime desde, DateTime hasta, int? supervisorId = null)
+        {
+            var query = contexto.Auditoria
+                .Include(a => a.Supervisor)
+                .Include(a => a.Operario)
+                .Include(a => a.Actividad)
+                .Include(a => a.Linea)
+                .Include(a => a.AuditoriaItems)
+                    .ThenInclude(ai => ai.ItemBPM)
+                .Where(a => a.Fecha >= DateOnly.FromDateTime(desde) &&
+                           a.Fecha <= DateOnly.FromDateTime(hasta));
+
+            if (supervisorId.HasValue)
+            {
+                query = query.Where(a => a.IdSupervisor == supervisorId.Value);
+            }
+
+            var auditorias = await query.ToListAsync();
+            return Ok(auditorias);
+        }
+
+
+
         [HttpPost("enviar-notificacion-auditoria")]
         public async Task<IActionResult> EnviarNotificacionAuditoria([FromForm] int idAuditoria)
         {
@@ -334,7 +389,7 @@ namespace apiAuditoriaBPM.Controllers
 
                 // Verificar que el supervisor existe
                 var supervisor = await contexto.Supervisor
-                    .FirstOrDefaultAsync(s => s.IdSupervisor == supervisorId);
+                    .FirstOrDefaultAsync(s => s.Legajo == supervisorId);
 
                 if (supervisor == null)
                 {
@@ -365,6 +420,183 @@ namespace apiAuditoriaBPM.Controllers
             catch (Exception ex)
             {
                 return StatusCode(500, $"Error interno del servidor: {ex.Message}");
+            }
+        }
+
+        [HttpGet("resumen-por-operario")]
+        public async Task<ActionResult<List<OperarioAuditoriaResumenDTO>>> GetResumenPorOperario(
+            [FromQuery] DateTime desde,
+            [FromQuery] DateTime hasta,
+            [FromQuery] int? legajo = null)
+        {
+            // Traer auditorías en el rango de fechas y opcionalmente filtrar por legajo
+            var query = contexto.Auditoria
+                .Include(a => a.Operario)
+                .Include(a => a.AuditoriaItems)
+                .Where(a => a.Fecha >= DateOnly.FromDateTime(desde) && a.Fecha <= DateOnly.FromDateTime(hasta));
+
+            // Aplicar filtro de legajo si es necesario
+            if (legajo.HasValue)
+            {
+                query = query.Where(a => a.Operario.Legajo == legajo.Value);
+            }
+
+            var auditorias = await query.ToListAsync();
+
+            // Registrar información detallada para depuración
+            Console.WriteLine($"Total de auditorías encontradas: {auditorias.Count}");
+            Console.WriteLine($"Auditorías sin operario: {auditorias.Count(a => a.Operario == null)}");
+            Console.WriteLine($"Auditorías con operario sin legajo: {auditorias.Count(a => a.Operario != null && a.Operario.Legajo == 0)}");
+
+            // Filtrar auditorías que tienen operario válido
+            var auditoriasConOperarioValido = auditorias.Where(a => a.Operario != null).ToList();
+            Console.WriteLine($"Auditorías con operario válido: {auditoriasConOperarioValido.Count}");
+
+            // Contar auditorías positivas y negativas totales
+            int totalPositivas = auditorias.Count(a => !a.AuditoriaItems.Any(ai => ai.Estado == EstadoEnum.NOOK));
+            int totalNegativas = auditorias.Count(a => a.AuditoriaItems.Any(ai => ai.Estado == EstadoEnum.NOOK));
+            Console.WriteLine($"Total auditorías positivas: {totalPositivas}, Total auditorías negativas: {totalNegativas}");
+
+            var resumen = auditoriasConOperarioValido
+                .GroupBy(a => new
+                {
+                    Legajo = a.Operario.Legajo,
+                    Nombre = (a.Operario.Nombre ?? "Sin nombre") + " " + (a.Operario.Apellido ?? "Sin apellido")
+                })
+                .Select(g => new OperarioAuditoriaResumenDTO
+                {
+                    Legajo = g.Key.Legajo,
+                    Nombre = g.Key.Nombre,
+                    // Una auditoría es positiva si NO tiene ningún ítem NO OK (puede tener ítems N/A)
+                    AuditoriasPositivas = g.Count(a => !a.AuditoriaItems.Any(ai => ai.Estado == EstadoEnum.NOOK)),
+                    // Una auditoría es negativa si tiene al menos un ítem NO OK
+                    AuditoriasNegativas = g.Count(a => a.AuditoriaItems.Any(ai => ai.Estado == EstadoEnum.NOOK))
+                })
+                .OrderBy(r => r.Legajo)
+                .ToList();
+
+            // Agregar un registro para las auditorías sin operario válido, si existen
+            int auditoriasInvalidas = auditorias.Count - auditoriasConOperarioValido.Count;
+            if (auditoriasInvalidas > 0)
+            {
+                int positivasSinOperario = auditorias.Where(a => a.Operario == null)
+                    .Count(a => !a.AuditoriaItems.Any(ai => ai.Estado == EstadoEnum.NOOK));
+
+                int negativasSinOperario = auditorias.Where(a => a.Operario == null)
+                    .Count(a => a.AuditoriaItems.Any(ai => ai.Estado == EstadoEnum.NOOK));
+
+                resumen.Add(new OperarioAuditoriaResumenDTO
+                {
+                    Legajo = 0,
+                    Nombre = "Auditorías sin operario asignado",
+                    AuditoriasPositivas = positivasSinOperario,
+                    AuditoriasNegativas = negativasSinOperario
+                });
+            }
+
+            return Ok(resumen);
+        }
+
+        /// <summary>
+        /// Exporta los datos de una auditoría específica a un archivo CSV compatible con Excel
+        /// </summary>
+        /// <param name="id">ID de la auditoría a exportar</param>
+        /// <returns>Archivo CSV para descargar</returns>
+        [HttpGet("ExportarAuditoriaExcel/{id}")]
+        public async Task<IActionResult> ExportarAuditoriaExcel(int id)
+        {
+            try
+            {
+                // Obtener la auditoría directamente de la base de datos con todas sus relaciones
+                var auditoria = await contexto.Auditoria
+                    .Include(a => a.Supervisor)
+                    .Include(a => a.Operario)
+                    .Include(a => a.Actividad)
+                    .Include(a => a.Linea)
+                    .Include(a => a.AuditoriaItems)
+                        .ThenInclude(i => i.ItemBPM)
+                    .FirstOrDefaultAsync(a => a.IdAuditoria == id);
+
+                if (auditoria == null)
+                {
+                    return NotFound("No se encontró la auditoría solicitada para exportar.");
+                }
+
+                // Crear el encabezado del CSV
+                StringBuilder csv = new StringBuilder();
+
+                // Datos de la auditoría
+                csv.AppendLine("DATOS DE LA AUDITORÍA");
+                // Usar formato de texto para Excel
+                csv.AppendLine($"ID Auditoría;{auditoria.IdAuditoria}");
+                csv.AppendLine($"Fecha;{auditoria.Fecha.ToString("dd/MM/yyyy")}");
+                csv.AppendLine($"Supervisor;{auditoria.Supervisor?.Apellido}, {auditoria.Supervisor?.Nombre}");
+                csv.AppendLine($"Legajo Supervisor;{auditoria.Supervisor?.Legajo}");
+                csv.AppendLine($"Operario;{auditoria.Operario?.Apellido}, {auditoria.Operario?.Nombre}");
+                csv.AppendLine($"Legajo Operario;{auditoria.Operario?.Legajo}");
+                csv.AppendLine($"Actividad;{auditoria.Actividad?.Descripcion}");
+                csv.AppendLine($"Línea;{auditoria.Linea?.Descripcion}");
+
+                // Verificar si la auditoría tiene al menos un ítem NO OK
+                bool tieneItemNoOk = auditoria.AuditoriaItems?.Any(i => i.Estado == EstadoEnum.NOOK) ?? false;
+                string estadoTexto = tieneItemNoOk ? "No Conforme" : "Conforme";
+                csv.AppendLine($"Firma;{estadoTexto}");
+                csv.AppendLine("");
+
+                // Ítems de la auditoría
+                csv.AppendLine("ITEMS DE LA AUDITORÍA");
+                csv.AppendLine("Descripción;Estado");
+
+                if (auditoria.AuditoriaItems != null && auditoria.AuditoriaItems.Any())
+                {
+                    foreach (var item in auditoria.AuditoriaItems.OrderBy(i => i.IdAuditoriaItemBPM))
+                    {
+                        string estado = "";
+                        switch (item.Estado)
+                        {
+                            case EstadoEnum.OK:
+                                estado = "OK";
+                                break;
+                            case EstadoEnum.NOOK:
+                                estado = "NO OK";
+                                break;
+                            case EstadoEnum.NA:
+                                estado = "N/A";
+                                break;
+                            default:
+                                estado = item.Estado.ToString();
+                                break;
+                        }
+
+                        csv.AppendLine($"{item.ItemBPM?.Descripcion};{estado}");
+                    }
+                }
+                else
+                {
+                    csv.AppendLine("No hay items asociados a esta auditoría");
+                }
+
+                // Agregar el BOM (Byte Order Mark) para Excel
+                byte[] preamble = System.Text.Encoding.UTF8.GetPreamble();
+                byte[] csvBytes = System.Text.Encoding.UTF8.GetBytes(csv.ToString());
+
+                // Combinar el BOM con el contenido CSV
+                byte[] fileBytes = new byte[preamble.Length + csvBytes.Length];
+                Buffer.BlockCopy(preamble, 0, fileBytes, 0, preamble.Length);
+                Buffer.BlockCopy(csvBytes, 0, fileBytes, preamble.Length, csvBytes.Length);
+
+                // Convertir a stream
+                var stream = new MemoryStream(fileBytes);
+
+                // Crear el resultado para descarga
+                var resultado = new FileStreamResult(stream, "text/csv; charset=utf-8");
+                resultado.FileDownloadName = $"Auditoria_{auditoria.IdAuditoria}_{auditoria.Fecha:yyyy-MM-dd}.csv";
+
+                return resultado;
+            }
+            catch (Exception ex)
+            {
+                return StatusCode(500, "No se pudo generar el archivo de exportación: " + ex.Message);
             }
         }
     }

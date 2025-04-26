@@ -14,6 +14,8 @@ namespace apiAuditoriaBPM.Models
 
         [ForeignKey(nameof(IdOperario))]
         public Operario? Operario { get; set; }
+        
+        [Column(TypeName = "text")]
         public string Firma { get; set; }        // SVG de la firma
         public string Hash { get; set; }         // Hash de la firma para verificación
         public int PuntosTotales { get; set; }   // Cantidad total de puntos en la firma
