@@ -17,6 +17,10 @@ namespace apiAuditoriaBPM.Models
         public string Apellido { get; set; }
 
         [Required]
+        [MaxLength(50)]
+        public string Email { get; set; }
+
+        [Required]
         [Display(Name = "Legajo")]
         public int Legajo { get; set; }
 
