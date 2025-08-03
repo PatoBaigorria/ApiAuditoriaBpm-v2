@@ -324,9 +324,14 @@ namespace apiAuditoriaBPM.Controllers
                     return BadRequest("La clave nueva no coincide");
                 }
 
-                var usuario = User.Identity.Name;
-                // Asegúrate de usar el nombre correcto de la tabla
-                var supervisor = await contexto.Supervisor.AsNoTracking().FirstOrDefaultAsync(x => x.Email == usuario);
+                var usuarioLegajo = User.Identity.Name;
+                if (!int.TryParse(usuarioLegajo, out int legajo))
+                {
+                    return BadRequest("No se pudo identificar al usuario");
+                }
+                
+                // Buscar supervisor por legajo (que es lo que está en el token)
+                var supervisor = await contexto.Supervisor.AsNoTracking().FirstOrDefaultAsync(x => x.Legajo == legajo);
                 if (supervisor == null)
                 {
                     return NotFound("Supervisor no encontrado");

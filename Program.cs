@@ -33,18 +33,35 @@ builder.Services.AddAuthentication()
         {
             OnMessageReceived = context =>
             {
+                // Primero intentar obtener el token del header Authorization (estándar)
+                var authHeader = context.Request.Headers["Authorization"].FirstOrDefault();
+                if (!string.IsNullOrEmpty(authHeader) && authHeader.StartsWith("Bearer "))
+                {
+                    context.Token = authHeader.Substring("Bearer ".Length).Trim();
+                    return Task.CompletedTask;
+                }
+                
+                // Si no está en el header, intentar desde query parameters
                 var accessToken = context.Request.Query["access_token"];
-                var path = context.HttpContext.Request.Path;
                 if (!string.IsNullOrEmpty(accessToken))
                 {
                     context.Token = accessToken;
+                    return Task.CompletedTask;
                 }
+                
+                // Si no está en query parameters, intentar desde cookies
+                var cookieToken = context.Request.Cookies["jwt_token"];
+                if (!string.IsNullOrEmpty(cookieToken))
+                {
+                    context.Token = cookieToken;
+                }
+                
                 return Task.CompletedTask;
             },
         };
     });
 
-var serverVersion = ServerVersion.AutoDetect("Server=localhost;User=root;Password=;Database=auditoriaBPMSslMode=none");
+var serverVersion = ServerVersion.AutoDetect("Server=localhost;User=root;Password=;Database=auditoriaBPM;SslMode=none");
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
