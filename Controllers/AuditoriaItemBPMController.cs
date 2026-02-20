@@ -34,7 +34,10 @@ namespace apiAuditoriaBPM.Controllers
 
         // GET Items No Ok con comentarios de Auditoria e Items
         [HttpGet("estado-nook-por-operario")]
-        public async Task<ActionResult<List<object>>> GetAuditoriaItemsWithNoOkEstado([FromQuery] int legajo)
+        public async Task<ActionResult<List<object>>> GetAuditoriaItemsWithNoOkEstado(
+            [FromQuery] int legajo,
+            [FromQuery] DateTime? desde = null,
+            [FromQuery] DateTime? hasta = null)
         {
             var operario = await contexto.Operario
                 .FirstOrDefaultAsync(o => o.Legajo == legajo);
@@ -44,12 +47,22 @@ namespace apiAuditoriaBPM.Controllers
                 return NotFound("Operario no encontrado.");
             }
 
-            // Obtener los items con estado NoOk
+            // Si no se especifican fechas, usar el año actual por defecto
+            var fechaDesde = desde.HasValue 
+                ? DateOnly.FromDateTime(desde.Value) 
+                : new DateOnly(DateTime.Now.Year, 1, 1);
+            var fechaHasta = hasta.HasValue 
+                ? DateOnly.FromDateTime(hasta.Value) 
+                : DateOnly.FromDateTime(DateTime.Now);
+
+            // Obtener los items con estado NoOk filtrados por rango de fechas
             var items = await contexto.AuditoriaItemBPM
                                       .Where(a => a.Estado == EstadoEnum.NOOK)
                                       .Include(a => a.Auditoria)
                                       .ThenInclude(a => a.Operario)
-                                      .Where(a => a.Auditoria.Operario.Legajo == legajo)
+                                      .Where(a => a.Auditoria.Operario.Legajo == legajo 
+                                                  && a.Auditoria.Fecha >= fechaDesde 
+                                                  && a.Auditoria.Fecha <= fechaHasta)
                                       .Include(a => a.ItemBPM)
                                       .ToListAsync(); // Traer todos los items
 
@@ -65,9 +78,6 @@ namespace apiAuditoriaBPM.Controllers
                                         Operario = g.FirstOrDefault().Auditoria.Operario.ObtenerNombreCompleto(),
                                         Descripcion = g.Key, // Descripción del item
                                         Count = g.Count(), // Contar la cantidad de veces que se repite
-
-                                        // Incluir todos los comentarios de Auditoria y AuditoriaItemBPM
-                                        ComentariosAuditoria = g.Select(a => a.Auditoria.Comentario ?? "").Distinct().ToList(),
                                     })
                                     .OrderByDescending(g => g.Count)
                                     .ToList(); // Convertir a lista

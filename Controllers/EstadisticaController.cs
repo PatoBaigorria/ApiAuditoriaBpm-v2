@@ -49,5 +49,24 @@ namespace apiAuditoriaBPM.Controllers
 
             return Ok(estadisticas);
         }
+
+        [HttpGet("no-conforme")]
+        [AllowAnonymous]
+        public async Task<ActionResult<IEnumerable<SupervisorEstadisticaDTO>>> GetEstadisticasNoConformes([FromQuery] DateTime desde, [FromQuery] DateTime hasta)
+        {
+            Console.WriteLine($"Desde: {desde}, Hasta: {hasta}");
+
+            var desdeDate = DateOnly.FromDateTime(desde);
+            var hastaDate = DateOnly.FromDateTime(hasta);
+
+            var estadisticas = await contexto.Auditoria
+                .Where(a => a.Fecha >= desdeDate && a.Fecha <= hastaDate && a.NoConforme)
+                .AsNoTracking()
+                .ToListAsync();
+
+            Console.WriteLine($"Estadisticas: {estadisticas.Count}");
+
+            return Ok(estadisticas);
+        }
     }
 }

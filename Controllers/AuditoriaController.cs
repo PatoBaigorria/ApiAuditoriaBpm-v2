@@ -180,6 +180,27 @@ namespace apiAuditoriaBPM.Controllers
             return Ok(auditorias);
         }
 
+        // GET: Auditorias/{id} - Obtener una auditoría específica por ID
+        [HttpGet("{id}")]
+        public async Task<ActionResult<Auditoria>> GetAuditoriaById(int id)
+        {
+            var auditoria = await contexto.Auditoria
+                .Include(a => a.Supervisor)
+                .Include(a => a.Operario)
+                .Include(a => a.Actividad)
+                .Include(a => a.Linea)
+                .Include(a => a.AuditoriaItems)
+                    .ThenInclude(ai => ai.ItemBPM)
+                .FirstOrDefaultAsync(a => a.IdAuditoria == id);
+
+            if (auditoria == null)
+            {
+                return NotFound($"No se encontró la auditoría con ID {id}");
+            }
+
+            return Ok(auditoria);
+        }
+
 
 
         [HttpPost("enviar-notificacion-auditoria")]
@@ -273,13 +294,21 @@ namespace apiAuditoriaBPM.Controllers
 
 
         [HttpGet("auditorias-operario")]
-        public IActionResult GetOperariosSinAuditoria()
+        public IActionResult GetOperariosSinAuditoria([FromQuery] DateTime? desde = null, [FromQuery] DateTime? hasta = null)
         {
-            // Cargar los operarios con las relaciones incluidas
+            // Si no se especifican fechas, usar el año actual por defecto
+            var fechaDesde = desde.HasValue 
+                ? DateOnly.FromDateTime(desde.Value) 
+                : new DateOnly(DateTime.Now.Year, 1, 1);
+            var fechaHasta = hasta.HasValue 
+                ? DateOnly.FromDateTime(hasta.Value) 
+                : DateOnly.FromDateTime(DateTime.Now);
+            
+            // Cargar los operarios que NO tienen auditorías en el rango de fechas especificado
             var operarios = contexto.Operario
                 .Include(o => o.Linea)
                 .Include(o => o.Actividad)
-                .Where(o => !contexto.Auditoria.Any(a => a.IdOperario == o.IdOperario))
+                .Where(o => !contexto.Auditoria.Any(a => a.IdOperario == o.IdOperario && a.Fecha >= fechaDesde && a.Fecha <= fechaHasta))
                 .ToList();
 
             var operariosSinAuditoria = operarios.Select(o => new
@@ -537,10 +566,9 @@ namespace apiAuditoriaBPM.Controllers
                 csv.AppendLine($"Actividad;{auditoria.Actividad?.Descripcion}");
                 csv.AppendLine($"Línea;{auditoria.Linea?.Descripcion}");
 
-                // Verificar si la auditoría tiene al menos un ítem NO OK
-                bool tieneItemNoOk = auditoria.AuditoriaItems?.Any(i => i.Estado == EstadoEnum.NOOK) ?? false;
-                string estadoTexto = tieneItemNoOk ? "No Conforme" : "Conforme";
-                csv.AppendLine($"Firma;{estadoTexto}");
+                // Usar el campo NoConforme de la auditoría (marcado por el operario al firmar)
+                string estadoTexto = auditoria.NoConforme ? "No Conforme" : "Conforme";
+                csv.AppendLine($"Firma Conforme/NC;{estadoTexto}");
                 csv.AppendLine("");
 
                 // Ítems de la auditoría

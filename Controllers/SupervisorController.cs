@@ -129,7 +129,7 @@ namespace apiAuditoriaBPM.Controllers
 
         [HttpPost("olvidecontrasena")]
         [AllowAnonymous]
-        public async Task<IActionResult> EnviarEmail([FromForm] string email)
+        public async Task<IActionResult> EnviarEmail([FromForm] string email, [FromForm] string origen = "web")
         {
             try
             {
@@ -164,14 +164,23 @@ namespace apiAuditoriaBPM.Controllers
                     issuer: config["TokenAuthentication:Issuer"],
                     audience: config["TokenAuthentication:Audience"],
                     claims: claims,
-                    expires: DateTime.Now.AddMinutes(5),
+                    expires: DateTime.Now.AddMinutes(30),
                     signingCredentials: credenciales
                 );
                 var tokenString = new JwtSecurityTokenHandler().WriteToken(token);
-                var dominio = HttpContext.Connection.RemoteIpAddress?.MapToIPv4().ToString();
-                var baseUrl = "http://localhost:5000";
-                var resetLink = "/Account/CambiarPassword";
-                var rutaCompleta = baseUrl + resetLink;
+                
+                // Determinar la URL según el origen (web o android)
+                string rutaCompleta;
+                if (origen?.ToLower() == "android")
+                {
+                    rutaCompleta = "auditoriabpm://cambiarpassword";
+                }
+                else
+                {
+                    var baseUrl = "http://localhost:5000";
+                    var resetLink = "/Account/CambiarPassword";
+                    rutaCompleta = baseUrl + resetLink;
+                }
                 var message = new MimeMessage();
 
                 // Usar un valor predeterminado para el nombre si es nulo
