@@ -120,7 +120,7 @@ namespace apiAuditoriaBPM.Controllers
                 
                 // Calcular porcentaje de auditorías completadas
                 int mesesTranscurridos = (hasta.Year - desde.Year) * 12 + hasta.Month - desde.Month + 1;
-                int objetivoAuditorias = mesesTranscurridos * 20; // 20 auditorías por mes como objetivo
+                int objetivoAuditorias = mesesTranscurridos * 3; // 3 auditorías por mes por supervisor como objetivo
                 
                 decimal porcentajeAuditoriasCompletadas;
                 if (objetivoAuditorias > 0)
