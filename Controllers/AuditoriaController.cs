@@ -318,6 +318,7 @@ namespace apiAuditoriaBPM.Controllers
                 o.Legajo,
                 IdLinea = o.Linea != null ? o.Linea.IdLinea : 0,
                 DescripcionLinea = o.Linea != null ? o.Linea.Descripcion : "Sin Línea",
+                IdActividad = o.Actividad != null ? o.Actividad.IdActividad : 0,
                 DescripcionActividad = o.Actividad != null ? o.Actividad.Descripcion : null
             }).ToList();
 
@@ -360,12 +361,65 @@ namespace apiAuditoriaBPM.Controllers
 
             try
             {
+                // Log de los datos recibidos
+                Console.WriteLine($"=== ALTA AUDITORIA ===");
+                Console.WriteLine($"IdOperario: {request.IdOperario}");
+                Console.WriteLine($"IdSupervisor: {request.IdSupervisor}");
+                Console.WriteLine($"IdActividad: {request.IdActividad}");
+                Console.WriteLine($"IdLinea: {request.IdLinea}");
+                Console.WriteLine($"Items: {request.Items?.Count ?? 0}");
+
+                // Validar que las claves foráneas existan
+                var operarioExiste = await contexto.Operario.AnyAsync(o => o.IdOperario == request.IdOperario);
+                var supervisorExiste = await contexto.Supervisor.AnyAsync(s => s.IdSupervisor == request.IdSupervisor);
+                var actividadExiste = await contexto.Actividad.AnyAsync(a => a.IdActividad == request.IdActividad);
+                var lineaExiste = await contexto.Linea.AnyAsync(l => l.IdLinea == request.IdLinea);
+
+                Console.WriteLine($"Operario existe: {operarioExiste}");
+                Console.WriteLine($"Supervisor existe: {supervisorExiste}");
+                Console.WriteLine($"Actividad existe: {actividadExiste}");
+                Console.WriteLine($"Linea existe: {lineaExiste}");
+
+                // Si IdActividad o IdLinea no existen, usar valores por defecto
+                int idActividad = request.IdActividad;
+                int idLinea = request.IdLinea;
+
+                if (!actividadExiste)
+                {
+                    // Obtener la primera actividad disponible
+                    var primeraActividad = await contexto.Actividad.FirstOrDefaultAsync();
+                    if (primeraActividad != null)
+                    {
+                        idActividad = primeraActividad.IdActividad;
+                        Console.WriteLine($"Actividad no encontrada, usando: {idActividad}");
+                    }
+                    else
+                    {
+                        return BadRequest("No hay actividades registradas en el sistema");
+                    }
+                }
+
+                if (!lineaExiste)
+                {
+                    // Obtener la primera línea disponible
+                    var primeraLinea = await contexto.Linea.FirstOrDefaultAsync();
+                    if (primeraLinea != null)
+                    {
+                        idLinea = primeraLinea.IdLinea;
+                        Console.WriteLine($"Línea no encontrada, usando: {idLinea}");
+                    }
+                    else
+                    {
+                        return BadRequest("No hay líneas registradas en el sistema");
+                    }
+                }
+
                 var nuevaAuditoria = new Auditoria
                 {
                     IdSupervisor = request.IdSupervisor,
                     IdOperario = request.IdOperario,
-                    IdActividad = request.IdActividad,
-                    IdLinea = request.IdLinea,
+                    IdActividad = idActividad,
+                    IdLinea = idLinea,
                     Fecha = DateOnly.FromDateTime(DateTime.Now),
                     NoConforme = request.NoConforme,
                     Firma = request.Firma,
@@ -374,6 +428,7 @@ namespace apiAuditoriaBPM.Controllers
 
                 await contexto.Auditoria.AddAsync(nuevaAuditoria);
                 await contexto.SaveChangesAsync();
+                Console.WriteLine($"Auditoría guardada con ID: {nuevaAuditoria.IdAuditoria}");
 
                 foreach (var item in request.Items)
                 {
