@@ -71,13 +71,14 @@ namespace apiAuditoriaBPM.Controllers
                 return NotFound("No se encontraron items con estado No Ok.");
             }
 
-            // Agrupar por Descripción
+            // Agrupar por Descripción y obtener los IDs de auditoría
             var groupedItems = items.GroupBy(a => a.ItemBPM.Descripcion)
                                     .Select(g => new
                                     {
                                         Operario = g.FirstOrDefault().Auditoria.Operario.ObtenerNombreCompleto(),
                                         Descripcion = g.Key, // Descripción del item
                                         Count = g.Count(), // Contar la cantidad de veces que se repite
+                                        IdsAuditoria = g.Select(x => x.IdAuditoria).Distinct().ToList() // IDs de auditorías donde ocurrió
                                     })
                                     .OrderByDescending(g => g.Count)
                                     .ToList(); // Convertir a lista
